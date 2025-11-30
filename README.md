@@ -112,3 +112,8 @@
 * 所有规范、接口变更记录于 `/docs` 文件夹。
 * README 仅保留简要说明与运行步骤。
 
+## 🔄 周合集同步
+
+* 触发 API：`POST /api/sync/weekly/`（管理员身份），同步完成后返回本次 `SyncLog` 的状态与新增/更新数量。
+* 管理命令：在 `backend` 目录执行 `python manage.py sync_weekly`，与 API 共用同一 service 逻辑，可用于 cron/Celery 定时任务。
+

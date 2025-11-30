@@ -12,7 +12,12 @@ def generate_weekly_collection():
       - 或者选当前季度中评分最高/热度最高的前 N 个，
       - 暂时先用简单规则代替，保证逻辑闭环。
     """
-    log = SyncLog.objects.create(sync_type="weekly", message="开始生成周合集")
+    log = SyncLog.objects.create(
+        job_type=SyncLog.JobType.WEEKLY,
+        sync_type=SyncLog.JobType.WEEKLY,
+        status=SyncLog.Status.PENDING,
+        message="开始生成周合集",
+    )
     try:
         now = timezone.now()
 
@@ -23,9 +28,12 @@ def generate_weekly_collection():
         # 再把本次选中的打标
         qs.update(is_weekly_featured=True)
 
+        log.status = SyncLog.Status.SUCCESS
         log.success = True
+        log.created_count = qs.count()
         log.message = f"周合集生成成功，本周推荐番数量：{qs.count()}"
     except Exception as e:
+        log.status = SyncLog.Status.FAILURE
         log.success = False
         log.message = f"周合集生成失败：{e!r}"
         raise

@@ -52,6 +52,13 @@ class PrivacySetting(models.Model):
 番剧和剧集管理：番剧信息、剧集详情、追番状态
 """
 class Anime(models.Model):
+    external_id = models.CharField(
+        max_length=128,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text="外部数据源的唯一标识，便于去重同步",
+    )
     title = models.CharField(max_length=512)
     title_cn = models.CharField(max_length=512)
     description = models.TextField(blank=True)
@@ -459,15 +466,26 @@ class Activity(models.Model):
 同步日志模型
 """
 class SyncLog(models.Model):
-    SYNC_TYPE_CHOICES = (
-        ("season", "季度番同步"),
-        ("weekly", "周合集生成"),
-    )
+    class JobType(models.TextChoices):
+        SEASON = "season", "季度番同步"
+        WEEKLY = "weekly", "周合集生成"
 
-    sync_type = models.CharField(max_length=20, choices=SYNC_TYPE_CHOICES)
+    class Status(models.TextChoices):
+        PENDING = "pending", "进行中"
+        SUCCESS = "success", "成功"
+        FAILURE = "failure", "失败"
+
+    # 兼容旧字段：保留 sync_type 并用 job_type 进行标准化
+    sync_type = models.CharField(max_length=20, choices=JobType.choices)
+    job_type = models.CharField(
+        max_length=20, choices=JobType.choices, default=JobType.WEEKLY
+    )
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     started_at = models.DateTimeField(auto_now_add=True)
     finished_at = models.DateTimeField(null=True, blank=True)
     success = models.BooleanField(default=False)
+    created_count = models.PositiveIntegerField(default=0)
+    updated_count = models.PositiveIntegerField(default=0)
     message = models.TextField(blank=True, default="")  # 可以存异常信息、统计信息等
 
     class Meta:
