@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Wangumi</string>
+    <string name="backend_status_placeholder">后端连接中……</string>
+    <string name="backend_status_ok">后端可用</string>
+    <string name="backend_status_error">后端不可用</string>
+</resources>
