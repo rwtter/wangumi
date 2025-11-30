@@ -1,0 +1,13 @@
+Django==5.2.7
+psycopg2
+requests
+Pillow
+dj-database-url
+dotenv
+djangorestframework 
+djangorestframework-simplejwt
+gunicorn
+whitenoise
+django-cors-headers
+redis>=5.0.0
+tencentcloud-sdk-python>=3.0.1042
