@@ -202,6 +202,10 @@ WEEKLY_COLLECTION_API = os.getenv(
     "WEEKLY_COLLECTION_API",
     "https://example.com/api/weekly-collections",
 )
+SEASON_COLLECTION_API = os.getenv(
+    "SEASON_COLLECTION_API",
+    "https://example.com/api/season-collections",
+)
 
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "admin@wangumi.local")
