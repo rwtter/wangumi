@@ -52,7 +52,12 @@ def sync_current_season_anime():
     - upsert 到 Anime
     - 记录 SyncLog
     """
-    log = SyncLog.objects.create(sync_type="season", message="开始同步季度番")
+    log = SyncLog.objects.create(
+        job_type=SyncLog.JobType.SEASON,
+        sync_type=SyncLog.JobType.SEASON,
+        status=SyncLog.Status.PENDING,
+        message="开始同步季度番",
+    )
     try:
         year, quarter = get_current_season_year_and_quarter()
         raw_list = fetch_raw_season_data()
@@ -78,9 +83,12 @@ def sync_current_season_anime():
                 },
             )
 
+        log.status = SyncLog.Status.SUCCESS
         log.success = True
+        log.created_count = len(raw_list)
         log.message = f"季度番同步成功，记录数：{len(raw_list)}"
     except Exception as e:
+        log.status = SyncLog.Status.FAILURE
         log.success = False
         log.message = f"季度番同步失败：{e!r}"
         raise

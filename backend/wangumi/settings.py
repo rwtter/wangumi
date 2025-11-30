@@ -119,8 +119,16 @@ DATABASES = {
 }
 
 
-if os.getenv("DATABASE_URL"):
-    DATABASES["default"] = dj_database_url.config(conn_max_age=600, ssl_require=True)
+database_url = os.getenv("DATABASE_URL")
+if database_url:
+    ssl_required = not database_url.startswith("sqlite")
+    DATABASES["default"] = dj_database_url.config(
+        conn_max_age=600, ssl_require=ssl_required
+    )
+
+    # sqlite 不支持 sslmode，移除不必要的 OPTIONS 配置
+    if not ssl_required and "OPTIONS" in DATABASES["default"]:
+        DATABASES["default"].pop("OPTIONS", None)
 
 
 # Password validation
@@ -189,6 +197,11 @@ SMS_CODE_SECRET = os.getenv("SMS_CODE_SECRET", SECRET_KEY)
 VERIFICATION_CODE_REQUEST_INTERVAL_SECONDS = int(os.getenv("VERIFICATION_CODE_REQUEST_INTERVAL_SECONDS", "60"))
 VERIFICATION_CODE_DAILY_LIMIT_PER_TARGET = int(os.getenv("VERIFICATION_CODE_DAILY_LIMIT_PER_TARGET", "10"))
 VERIFICATION_CODE_DAILY_LIMIT_PER_IP = int(os.getenv("VERIFICATION_CODE_DAILY_LIMIT_PER_IP", "50"))
+
+WEEKLY_COLLECTION_API = os.getenv(
+    "WEEKLY_COLLECTION_API",
+    "https://example.com/api/weekly-collections",
+)
 
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "admin@wangumi.local")
