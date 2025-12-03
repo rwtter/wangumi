@@ -35,7 +35,7 @@ DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
 RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "wangumi.onrender.com","10.0.2.2","100.80.47.145"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "wangumi.onrender.com","10.0.2.2","100.80.47.145","123.249.36.248"]
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
@@ -103,21 +103,30 @@ WSGI_APPLICATION = "wangumi.wsgi.application"
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=12),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
 }
 
 
 #PostgreSQL配置
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB'),
-        'USER': os.getenv('POSTGRES_USER'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
-        'HOST': os.getenv('POSTGRES_HOST', 'wangumi-db'),   # ← 必须是容器名
-        'PORT': os.getenv('POSTGRES_PORT', '5432'),
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME", "wangumi_db"),
+        "USER": os.getenv("DB_USER", "gumi"),
+        "PASSWORD": os.getenv("DB_PASSWORD", "1234"),
+        "HOST": os.getenv("DB_HOST", "127.0.0.1"),
+        "PORT": os.getenv("DB_PORT", "5432"),
     }
 }
-
 
 database_url = os.getenv("DATABASE_URL")
 if database_url:
@@ -129,7 +138,6 @@ if database_url:
     # sqlite 不支持 sslmode，移除不必要的 OPTIONS 配置
     if not ssl_required and "OPTIONS" in DATABASES["default"]:
         DATABASES["default"].pop("OPTIONS", None)
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -175,8 +183,7 @@ STATICFILES_DIRS = [
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
-
+MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", BASE_DIR / "media"))
 
 CORS_ALLOWED_ORIGINS = [
     origin
@@ -202,14 +209,15 @@ WEEKLY_COLLECTION_API = os.getenv(
     "WEEKLY_COLLECTION_API",
     "https://example.com/api/weekly-collections",
 )
-SEASON_COLLECTION_API = os.getenv(
-    "SEASON_COLLECTION_API",
-    "https://example.com/api/season-collections",
-)
-
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "admin@wangumi.local")
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "2367285113@qq.com")
 EMAIL_VERIFICATION_SUBJECT = os.getenv("EMAIL_VERIFICATION_SUBJECT", "Your Wangumi verification code")
+EMAIL_HOST=os.getenv("EMAIL_HOST", "smtp.qq.com")
+EMAIL_PORT=int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_USE_TLS=os.getenv("EMAIL_USE_TLS", "True").lower() == "true"
+EMAIL_HOST_USER=os.getenv("EMAIL_HOST_USER", "2367285113@qq.com")
+EMAIL_HOST_PASSWORD=os.getenv("EMAIL_HOST_PASSWORD", "iblkfzhwgfzpdhib")
+
 
 TENCENT_SMS_SECRET_ID = os.getenv("TENCENT_SMS_SECRET_ID")
 TENCENT_SMS_SECRET_KEY = os.getenv("TENCENT_SMS_SECRET_KEY")
@@ -223,4 +231,3 @@ TENCENT_SMS_ENDPOINT = os.getenv("TENCENT_SMS_ENDPOINT", "sms.tencentcloudapi.co
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
