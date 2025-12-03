@@ -4,25 +4,45 @@
 
 from django.db import models
 from django.contrib.auth.models import User#引入Django自带的用户模型，方便认证和权限管理
-
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from datetime import timedelta
+from django.contrib.postgres.search import SearchVectorField
+from django.contrib.postgres.indexes import GinIndex
+
 """
 用户管理：用户资料、关注关系
 """
 #为每个注册用户登记基本信息
 class UserProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)#通过与User模型一对一关联扩展用户信息，详细包含项查询https://docs.djangoproject.com/zh-hans/5.2/ref/contrib/auth/
-    cellphone = models.CharField(max_length=20, blank=True)
-    
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+
+    nickname = models.CharField(max_length=50, blank=True)
     avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
     signature = models.CharField(max_length=100, blank=True)
-    intro = models.TextField(blank=True,null=True)
+    intro = models.TextField(blank=True, null=True)
 
-    def __str__(self):#调试时显示实例的名字（即user.username）方便辨认
+    # 联系方式
+    cellphone = models.CharField(max_length=20, blank=True)
+    qq = models.CharField(max_length=30, blank=True)
+    weixin = models.CharField(max_length=30, blank=True)
+    weibo = models.CharField(max_length=50, blank=True)
+    
+    # 个人站点
+    website = models.CharField(max_length=200, blank=True)
+
+    # 性别、地区（可选）
+    gender = models.CharField(max_length=20, blank=True, null=True)
+    location = models.CharField(max_length=100, blank=True, null=True)
+    # 全文搜索字段
+    search_vector = SearchVectorField(null=True)
+    def __str__(self):
         return self.user.username
+    class Meta:
+        indexes = [
+            GinIndex(fields=["search_vector"]),
+        ]
 
 #用户关注关系
 class UserFollow(models.Model):
@@ -92,21 +112,16 @@ class Anime(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     # 创建者
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='animes_created')
-
-    season_year = models.IntegerField(null=True, blank=True, help_text="季度番所在年份，例如 2025")
-    season_quarter = models.CharField(
-        max_length=10,
-        null=True,
-        blank=True,
-        help_text="季度番季度：spring/summer/autumn/winter"
-    )
-
-    # 新增：推荐打标（方便推荐接口查询）
-    is_season_featured = models.BooleanField(default=False, help_text="是否为当前季度推荐番")
-    is_weekly_featured = models.BooleanField(default=False, help_text="是否为本周推荐番")
+    # 全文搜索字段
+    search_vector = SearchVectorField(null=True)
 
     def __str__(self):
         return self.title
+
+    class Meta:
+        indexes = [
+            GinIndex(fields=["search_vector"]),
+        ]
 
 
 class Episode(models.Model):
@@ -293,7 +308,14 @@ class Person(models.Model):
     anidb_id = models.PositiveIntegerField(default=0)#编辑锁定
     ban = models.PositiveSmallIntegerField(default=0) 
     redirect = models.PositiveIntegerField(default=0)#重定向到其他人物ID 
-    nsfw = models.BooleanField(default=False)#“包含成人内容”标识
+    nsfw = models.BooleanField(default=False)#"包含成人内容"标识
+    # 全文搜索字段
+    search_vector = SearchVectorField(null=True)
+
+    class Meta:
+        indexes = [
+            GinIndex(fields=["search_vector"]),
+        ]
 
  #虚拟角色主表
 class Character(models.Model):
@@ -333,11 +355,16 @@ class Character(models.Model):
     birth_year = models.PositiveSmallIntegerField(null=True, blank=True)
     birth_month = models.PositiveSmallIntegerField(null=True, blank=True)
     birth_day = models.PositiveSmallIntegerField(null=True, blank=True)
+    # 全文搜索字段
+    search_vector = SearchVectorField(null=True)
 
     class Meta:
         db_table = 'characters'
         verbose_name = '虚拟角色'
         verbose_name_plural = '角色表'
+        indexes = [
+            GinIndex(fields=["search_vector"]),
+        ]
 
     def __str__(self):
         return self.name
@@ -346,7 +373,6 @@ class Character(models.Model):
 """
 以下内容为关联表
 """
-
 
 """角色与番剧条目的多对多关系表"""
 class CharacterAppearance(models.Model):
@@ -389,7 +415,7 @@ class CharacterVoice(models.Model):
 
 """制作职能分类，如导演、脚本、音乐、出品等"""
 class StaffRole(models.Model):
-    name = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=1024, unique=True)
     description = models.TextField(blank=True)
     is_voice_role = models.BooleanField(default=False, help_text="是否为声优类职能")#用于将声优关联到角色表上
 
@@ -423,7 +449,6 @@ class AnimeStaff(models.Model):
         role_name = self.role.name
         return f"{self.person.pers_name} - {role_name} @ {self.anime.title}"
 
-
 """验证码存储表，用于注册/找回密码等功能"""
 class VerificationCode(models.Model):
     target = models.CharField(max_length=100, unique=True)  # 手机号或邮箱
@@ -435,8 +460,6 @@ class VerificationCode(models.Model):
 
     def __str__(self):
         return f"{self.target} -> {self.code}"
-
-
 
 """
 Activity / Feed（用户动态流）
@@ -461,36 +484,6 @@ class Activity(models.Model):
         indexes = [models.Index(fields=['user', 'created_at'])]
         verbose_name = "用户动态"
         verbose_name_plural = "用户动态流"
-
-"""
-同步日志模型
-"""
-class SyncLog(models.Model):
-    class JobType(models.TextChoices):
-        SEASON = "season", "季度番同步"
-        WEEKLY = "weekly", "周合集生成"
-
-    class Status(models.TextChoices):
-        PENDING = "pending", "进行中"
-        SUCCESS = "success", "成功"
-        FAILURE = "failure", "失败"
-
-    # 兼容旧字段：保留 sync_type 并用 job_type 进行标准化
-    sync_type = models.CharField(max_length=20, choices=JobType.choices)
-    job_type = models.CharField(
-        max_length=20, choices=JobType.choices, default=JobType.WEEKLY
-    )
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
-    started_at = models.DateTimeField(auto_now_add=True)
-    finished_at = models.DateTimeField(null=True, blank=True)
-    success = models.BooleanField(default=False)
-    created_count = models.PositiveIntegerField(default=0)
-    updated_count = models.PositiveIntegerField(default=0)
-    message = models.TextField(blank=True, default="")  # 可以存异常信息、统计信息等
-
-    class Meta:
-        ordering = ["-started_at"]
-
 """"
 通知模型
 """
@@ -533,3 +526,73 @@ Tag(番剧标签模型)
 #         unique_together = ('anime', 'tag')
 #         verbose_name = "番剧标签关联"
 #         verbose_name_plural = "番剧标签关联表"
+
+"""
+用户封禁管理模型
+"""
+class UserBanLog(models.Model):
+    """用户封禁操作日志（记录历史）"""
+    
+    ACTION_TYPES = [
+        ('BAN', '封禁用户'),
+        ('UNBAN', '解封用户'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ban_logs')
+    action = models.CharField(max_length=10, choices=ACTION_TYPES)
+    reason = models.TextField(verbose_name='操作理由')
+    
+    # 封禁相关信息（仅当action='BAN'时有效）
+    ban_duration = models.IntegerField(null=True, blank=True, verbose_name='封禁天数')
+    ban_until = models.DateTimeField(null=True, blank=True, verbose_name='封禁至')
+    
+    # 操作信息
+    operated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_ban_operations')
+    operated_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'user_ban_logs'
+        verbose_name = '用户封禁日志'
+        verbose_name_plural = '用户封禁日志'
+        ordering = ['-operated_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.get_action_display()}"
+
+class AdminLog(models.Model):
+    """管理员操作日志"""
+    
+    ACTION_TYPES = [
+        ('BAN_USER', '封禁用户'),
+        ('UNBAN_USER', '解封用户'),
+        ('DELETE_CONTENT', '删除内容'),
+        ('HANDLE_REPORT', '处理举报'),
+    ]
+    
+    admin = models.ForeignKey(User, on_delete=models.CASCADE, related_name='admin_actions')
+    action_type = models.CharField(max_length=20, choices=ACTION_TYPES)
+    target_user = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True,
+        related_name='admin_actions_against'
+    )
+    target_content_type = models.ForeignKey(ContentType, on_delete=models.SET_NULL, null=True, blank=True)
+    target_object_id = models.PositiveIntegerField(null=True, blank=True)
+    target_object = GenericForeignKey('target_content_type', 'target_object_id')
+    
+    description = models.TextField(verbose_name='操作描述')
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'admin_logs'
+        verbose_name = '管理员操作日志'
+        verbose_name_plural = '管理员操作日志'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.admin.username} - {self.get_action_type_display()} - {self.created_at}"
